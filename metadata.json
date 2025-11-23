@@ -1,0 +1,5 @@
+{
+  "name": "QuantSim: Portfolio Rebalancing",
+  "description": "A forward-testing simulation engine comparing Rebalancing strategies against Buy & Hold using Geometric Brownian Motion stochastic pricing.",
+  "requestFramePermissions": []
+}
