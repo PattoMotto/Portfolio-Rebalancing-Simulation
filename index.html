@@ -3,7 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="QuantSim: A professional browser-based portfolio rebalancing simulation engine using stochastic pricing models." />
     <title>QuantSim: Portfolio Rebalancing</title>
+    
+    <!-- Warning Suppression for Portable/CDN Mode -->
+    <script>
+      (function() {
+        const originalWarn = console.warn;
+        console.warn = function(...args) {
+          // Suppress the specific warning about using the CDN in production
+          // This is intentional for this browser-based portable architecture.
+          if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com')) {
+            return;
+          }
+          originalWarn.apply(console, args);
+        };
+      })();
+    </script>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       /* Custom scrollbar for dark mode aesthetics */
