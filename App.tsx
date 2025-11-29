@@ -23,7 +23,8 @@ import {
   TrendingDown,
   Minus,
   AlertTriangle,
-  Sliders
+  Sliders,
+  Github
 } from 'lucide-react';
 
 // --- 1. Types & Interfaces ---
@@ -36,13 +37,13 @@ interface MarketConfig {
   initialPrice: number;
   days: number;
   type: ModelType;
-  drift: number; 
-  volatility: number; 
-  meanReversionSpeed: number; 
-  longTermMean: number; 
-  jumpIntensity: number; 
-  jumpMean: number; 
-  jumpStdDev: number; 
+  drift: number;
+  volatility: number;
+  meanReversionSpeed: number;
+  longTermMean: number;
+  jumpIntensity: number;
+  jumpMean: number;
+  jumpStdDev: number;
 }
 
 interface StrategyConfig {
@@ -54,9 +55,9 @@ interface StrategyConfig {
   indicatorPeriod: number;
   adxThreshold: number;
   rebalanceType: RebalanceType;
-  rebalanceThreshold: number; 
-  rebalanceFrequency: number; 
-  transactionFeeRate: number; 
+  rebalanceThreshold: number;
+  rebalanceFrequency: number;
+  transactionFeeRate: number;
 }
 
 interface StepData {
@@ -66,7 +67,7 @@ interface StepData {
   strategyValue: number;
   strategyCash: number;
   strategyAssetValue: number;
-  allocation: number; 
+  allocation: number;
   targetAllocation: number;
   rsi?: number;
   adx?: number;
@@ -158,7 +159,7 @@ class TechnicalIndicators {
   private dmMinus: number[] = [];
   private prices: number[] = [];
 
-  constructor(private period: number) {}
+  constructor(private period: number) { }
 
   updateRSI(price: number, prevPrice: number): number | null {
     const change = price - prevPrice;
@@ -252,23 +253,23 @@ const runSimulation = (
 
   for (let t = 1; t < pricePath.length; t++) {
     const price = pricePath[t];
-    const prevPrice = pricePath[t-1];
+    const prevPrice = pricePath[t - 1];
     const rsiVal = indicators.updateRSI(price, prevPrice);
     const trendVal = indicators.updateTrend(price, prevPrice);
 
     // Dynamic Target Logic
     if (strategy.allocationMode === 'rsi' && rsiVal !== null) {
-        let rsiFactor = (rsiVal - 30) / 40;
-        rsiFactor = Math.max(0, Math.min(1, rsiFactor)); 
-        currentTargetAllocation = strategy.maxAllocation - (rsiFactor * (strategy.maxAllocation - strategy.minAllocation));
+      let rsiFactor = (rsiVal - 30) / 40;
+      rsiFactor = Math.max(0, Math.min(1, rsiFactor));
+      currentTargetAllocation = strategy.maxAllocation - (rsiFactor * (strategy.maxAllocation - strategy.minAllocation));
     } else if (strategy.allocationMode === 'adx' && trendVal !== null) {
-        const { adx, sma } = trendVal;
-        const midPoint = (strategy.maxAllocation + strategy.minAllocation) / 2;
-        if (adx > strategy.adxThreshold) {
-           currentTargetAllocation = (price > sma) ? strategy.maxAllocation : strategy.minAllocation;
-        } else {
-           currentTargetAllocation = midPoint;
-        }
+      const { adx, sma } = trendVal;
+      const midPoint = (strategy.maxAllocation + strategy.minAllocation) / 2;
+      if (adx > strategy.adxThreshold) {
+        currentTargetAllocation = (price > sma) ? strategy.maxAllocation : strategy.minAllocation;
+      } else {
+        currentTargetAllocation = midPoint;
+      }
     } else if (strategy.allocationMode === 'fixed') {
       currentTargetAllocation = strategy.targetAllocation;
     }
@@ -281,7 +282,7 @@ const runSimulation = (
     let currentAssetValue = strategyAssetCount * price;
     let currentTotalStrategyValue = strategyCash + currentAssetValue;
     let currentAllocation = currentAssetValue / currentTotalStrategyValue;
-    
+
     let action: 'buy' | 'sell' | 'hold' = 'hold';
     let tradeAmount = 0;
 
@@ -293,11 +294,11 @@ const runSimulation = (
     } else {
       shouldRebalance = (t % strategy.rebalanceFrequency === 0);
     }
-    
+
     if (shouldRebalance) {
       const targetAssetValue = currentTotalStrategyValue * currentTargetAllocation;
       const diff = targetAssetValue - currentAssetValue;
-      
+
       if (Math.abs(diff) > 1) { // Dust threshold
         rebalanceCount++;
         const fee = Math.abs(diff) * strategy.transactionFeeRate;
@@ -411,37 +412,48 @@ const NumberControl = ({ label, value, onChange, step = 0.01, min, max, isPercen
 const MarketControls = ({ market, setMarket, regenerateMarket, applyPreset }: any) => (
   <>
     <div className="p-6 border-b border-slate-800">
-      <div className="flex items-center gap-2 mb-1">
-        <Activity className="text-indigo-500" />
-        <h1 className="text-xl font-bold tracking-tight text-white">QuantSim</h1>
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          <Activity className="text-indigo-500" />
+          <h1 className="text-xl font-bold tracking-tight text-white">QuantSim</h1>
+        </div>
+        <a
+          href="https://github.com/PattoMotto/portfolio-rebalancing-simulation"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-slate-400 hover:text-slate-200 transition-colors"
+          title="View on GitHub"
+        >
+          <Github size={20} />
+        </a>
       </div>
       <p className="text-xs text-slate-500">Rebalancing vs. Buy & Hold</p>
     </div>
 
     <div className="p-6 pb-0">
-       <section>
-          <div className="flex items-center gap-2 mb-3 text-sm font-semibold text-slate-100 uppercase tracking-wider">
-            <Zap size={14} className="text-yellow-500" />
-            Quick Setup
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => applyPreset('BULL')} className="px-2 py-1.5 bg-slate-800 hover:bg-indigo-900/30 border border-slate-700 rounded text-xs text-emerald-400 flex items-center gap-1 justify-center transition-colors">
-              <TrendingUp size={12} /> Bull Trend
-            </button>
-            <button onClick={() => applyPreset('BEAR')} className="px-2 py-1.5 bg-slate-800 hover:bg-rose-900/30 border border-slate-700 rounded text-xs text-rose-400 flex items-center gap-1 justify-center transition-colors">
-              <TrendingDown size={12} /> Bear Trend
-            </button>
-            <button onClick={() => applyPreset('SIDEWAYS')} className="px-2 py-1.5 bg-slate-800 hover:bg-blue-900/30 border border-slate-700 rounded text-xs text-blue-400 flex items-center gap-1 justify-center transition-colors">
-              <Minus size={12} /> Range (OU)
-            </button>
-            <button onClick={() => applyPreset('CRASH')} className="px-2 py-1.5 bg-slate-800 hover:bg-orange-900/30 border border-slate-700 rounded text-xs text-orange-400 flex items-center gap-1 justify-center transition-colors">
-              <AlertTriangle size={12} /> Crash Risk
-            </button>
-            <button onClick={() => applyPreset('VOLATILE')} className="col-span-2 px-2 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs text-slate-300 flex items-center gap-1 justify-center transition-colors">
-              <Activity size={12} /> High Volatility (No Trend)
-            </button>
-          </div>
-        </section>
+      <section>
+        <div className="flex items-center gap-2 mb-3 text-sm font-semibold text-slate-100 uppercase tracking-wider">
+          <Zap size={14} className="text-yellow-500" />
+          Quick Setup
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <button onClick={() => applyPreset('BULL')} className="px-2 py-1.5 bg-slate-800 hover:bg-indigo-900/30 border border-slate-700 rounded text-xs text-emerald-400 flex items-center gap-1 justify-center transition-colors">
+            <TrendingUp size={12} /> Bull Trend
+          </button>
+          <button onClick={() => applyPreset('BEAR')} className="px-2 py-1.5 bg-slate-800 hover:bg-rose-900/30 border border-slate-700 rounded text-xs text-rose-400 flex items-center gap-1 justify-center transition-colors">
+            <TrendingDown size={12} /> Bear Trend
+          </button>
+          <button onClick={() => applyPreset('SIDEWAYS')} className="px-2 py-1.5 bg-slate-800 hover:bg-blue-900/30 border border-slate-700 rounded text-xs text-blue-400 flex items-center gap-1 justify-center transition-colors">
+            <Minus size={12} /> Range (OU)
+          </button>
+          <button onClick={() => applyPreset('CRASH')} className="px-2 py-1.5 bg-slate-800 hover:bg-orange-900/30 border border-slate-700 rounded text-xs text-orange-400 flex items-center gap-1 justify-center transition-colors">
+            <AlertTriangle size={12} /> Crash Risk
+          </button>
+          <button onClick={() => applyPreset('VOLATILE')} className="col-span-2 px-2 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs text-slate-300 flex items-center gap-1 justify-center transition-colors">
+            <Activity size={12} /> High Volatility (No Trend)
+          </button>
+        </div>
+      </section>
     </div>
 
     <div className="p-6">
@@ -451,20 +463,20 @@ const MarketControls = ({ market, setMarket, regenerateMarket, applyPreset }: an
           Market Params
         </div>
         <div className="mb-4">
-            <label className="text-xs font-medium text-slate-300 mb-1.5 block">Pricing Model</label>
-            <select 
-              value={market.type}
-              onChange={(e) => setMarket((p: MarketConfig) => ({ ...p, type: e.target.value as ModelType }))}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg py-2 px-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
-            >
-              <option value="GBM">Geometric Brownian Motion</option>
-              <option value="OU">Ornstein-Uhlenbeck (Range)</option>
-              <option value="JUMP">Jump Diffusion (Shocks)</option>
-            </select>
+          <label className="text-xs font-medium text-slate-300 mb-1.5 block">Pricing Model</label>
+          <select
+            value={market.type}
+            onChange={(e) => setMarket((p: MarketConfig) => ({ ...p, type: e.target.value as ModelType }))}
+            className="w-full bg-slate-800 border border-slate-700 rounded-lg py-2 px-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+          >
+            <option value="GBM">Geometric Brownian Motion</option>
+            <option value="OU">Ornstein-Uhlenbeck (Range)</option>
+            <option value="JUMP">Jump Diffusion (Shocks)</option>
+          </select>
         </div>
         <NumberControl label="Duration (Days)" value={market.days} min={30} max={1000} step={10} onChange={(v: number) => setMarket((p: MarketConfig) => ({ ...p, days: v }))} />
         <NumberControl label="Volatility (Annual)" value={market.volatility} min={0.05} max={2.0} step={0.01} isPercentage={true} onChange={(v: number) => setMarket((p: MarketConfig) => ({ ...p, volatility: v }))} />
-        
+
         {market.type === 'GBM' && (
           <NumberControl label="Drift (Annual Trend)" value={market.drift} min={-0.5} max={0.5} step={0.01} isPercentage={true} onChange={(v: number) => setMarket((p: MarketConfig) => ({ ...p, drift: v }))} />
         )}
@@ -476,12 +488,12 @@ const MarketControls = ({ market, setMarket, regenerateMarket, applyPreset }: an
         )}
         {market.type === 'JUMP' && (
           <>
-             <NumberControl label="Drift (Base Trend)" value={market.drift} min={-0.5} max={0.5} step={0.01} isPercentage={true} onChange={(v: number) => setMarket((p: MarketConfig) => ({ ...p, drift: v }))} />
+            <NumberControl label="Drift (Base Trend)" value={market.drift} min={-0.5} max={0.5} step={0.01} isPercentage={true} onChange={(v: number) => setMarket((p: MarketConfig) => ({ ...p, drift: v }))} />
             <NumberControl label="Jump Intensity (per year)" value={market.jumpIntensity} min={0} max={50} step={0.5} onChange={(v: number) => setMarket((p: MarketConfig) => ({ ...p, jumpIntensity: v }))} />
             <NumberControl label="Avg Jump Size" value={market.jumpMean} min={-0.5} max={0.5} step={0.01} isPercentage={true} onChange={(v: number) => setMarket((p: MarketConfig) => ({ ...p, jumpMean: v }))} />
           </>
         )}
-        
+
         <button onClick={regenerateMarket} className="w-full mt-2 py-2 px-4 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-xs font-medium text-indigo-300 transition-colors flex items-center justify-center gap-2">
           <RefreshCw size={12} /> Regenerate Market Path
         </button>
@@ -492,113 +504,113 @@ const MarketControls = ({ market, setMarket, regenerateMarket, applyPreset }: an
 
 const StrategyControls = ({ strategy, setStrategy }: any) => (
   <div className="p-6 pt-0">
-      <section>
-        <div className="flex items-center gap-2 mb-4 text-sm font-semibold text-slate-100 uppercase tracking-wider">
-          <Settings size={14} className="text-emerald-500" />
-          Strategy Config
+    <section>
+      <div className="flex items-center gap-2 mb-4 text-sm font-semibold text-slate-100 uppercase tracking-wider">
+        <Settings size={14} className="text-emerald-500" />
+        Strategy Config
+      </div>
+
+      <NumberControl label="Initial Capital" value={strategy.initialCapital} min={1000} max={1000000} step={1000} prefix="$" onChange={(v: number) => setStrategy((p: StrategyConfig) => ({ ...p, initialCapital: v }))} />
+
+      <div className="mb-4">
+        <label className="text-xs font-medium text-slate-300 mb-1.5 block">Allocation Mode</label>
+        <div className="flex flex-col gap-1">
+          <select
+            value={strategy.allocationMode}
+            onChange={(e) => setStrategy((p: StrategyConfig) => ({ ...p, allocationMode: e.target.value as AllocationMode }))}
+            className="w-full bg-slate-800 border border-slate-700 rounded-lg py-2 px-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+          >
+            <option value="fixed">Fixed Target</option>
+            <option value="rsi">Auto (RSI Contrarian)</option>
+            <option value="adx">Auto (Trend Following)</option>
+          </select>
+          <p className="text-[10px] text-slate-500 mt-1 px-1">
+            {strategy.allocationMode === 'fixed' && "Maintains constant exposure."}
+            {strategy.allocationMode === 'rsi' && "Buys dips (Low RSI), Sells rips (High RSI)."}
+            {strategy.allocationMode === 'adx' && "Increases exposure during strong uptrends."}
+          </p>
         </div>
+      </div>
 
-        <NumberControl label="Initial Capital" value={strategy.initialCapital} min={1000} max={1000000} step={1000} prefix="$" onChange={(v: number) => setStrategy((p: StrategyConfig) => ({ ...p, initialCapital: v }))} />
+      {strategy.allocationMode === 'fixed' ? (
+        <NumberControl label="Target Allocation" value={strategy.targetAllocation} min={0.0} max={1.0} step={0.01} isPercentage={true} onChange={(v: number) => setStrategy((p: StrategyConfig) => ({ ...p, targetAllocation: v }))} />
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <NumberControl label="Min Alloc" value={strategy.minAllocation} min={0.0} max={1.0} step={0.05} isPercentage={true} onChange={(v: number) => setStrategy((p: StrategyConfig) => ({ ...p, minAllocation: v }))} />
+            <NumberControl label="Max Alloc" value={strategy.maxAllocation} min={0.0} max={1.0} step={0.05} isPercentage={true} onChange={(v: number) => setStrategy((p: StrategyConfig) => ({ ...p, maxAllocation: v }))} />
+          </div>
+          <NumberControl label={strategy.allocationMode === 'rsi' ? "RSI Period" : "ADX Period"} value={strategy.indicatorPeriod} min={2} max={50} step={1} onChange={(v: number) => setStrategy((p: StrategyConfig) => ({ ...p, indicatorPeriod: v }))} />
+          {strategy.allocationMode === 'adx' && (
+            <NumberControl label="Trend Strength (ADX Threshold)" value={strategy.adxThreshold} min={10} max={50} step={1} onChange={(v: number) => setStrategy((p: StrategyConfig) => ({ ...p, adxThreshold: v }))} />
+          )}
+        </>
+      )}
 
-        <div className="mb-4">
-            <label className="text-xs font-medium text-slate-300 mb-1.5 block">Allocation Mode</label>
-            <div className="flex flex-col gap-1">
-              <select 
-                value={strategy.allocationMode}
-                onChange={(e) => setStrategy((p: StrategyConfig) => ({ ...p, allocationMode: e.target.value as AllocationMode }))}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg py-2 px-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
-              >
-                <option value="fixed">Fixed Target</option>
-                <option value="rsi">Auto (RSI Contrarian)</option>
-                <option value="adx">Auto (Trend Following)</option>
-              </select>
-              <p className="text-[10px] text-slate-500 mt-1 px-1">
-                {strategy.allocationMode === 'fixed' && "Maintains constant exposure."}
-                {strategy.allocationMode === 'rsi' && "Buys dips (Low RSI), Sells rips (High RSI)."}
-                {strategy.allocationMode === 'adx' && "Increases exposure during strong uptrends."}
-              </p>
-            </div>
+      <div className="border-t border-slate-800 my-4"></div>
+
+      <div className="mb-4">
+        <label className="text-xs font-medium text-slate-300 mb-1.5 block">Rebalance Trigger</label>
+        <div className="flex bg-slate-800 p-1 rounded-lg border border-slate-700">
+          <button onClick={() => setStrategy((p: StrategyConfig) => ({ ...p, rebalanceType: 'threshold' }))} className={`flex-1 py-1.5 text-xs font-medium rounded transition-colors ${strategy.rebalanceType === 'threshold' ? 'bg-slate-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
+            Threshold
+          </button>
+          <button onClick={() => setStrategy((p: StrategyConfig) => ({ ...p, rebalanceType: 'time' }))} className={`flex-1 py-1.5 text-xs font-medium rounded transition-colors ${strategy.rebalanceType === 'time' ? 'bg-slate-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
+            Time
+          </button>
         </div>
+      </div>
 
-        {strategy.allocationMode === 'fixed' ? (
-          <NumberControl label="Target Allocation" value={strategy.targetAllocation} min={0.0} max={1.0} step={0.01} isPercentage={true} onChange={(v: number) => setStrategy((p: StrategyConfig) => ({ ...p, targetAllocation: v }))} />
-        ) : (
-          <>
-              <div className="grid grid-cols-2 gap-2">
-                <NumberControl label="Min Alloc" value={strategy.minAllocation} min={0.0} max={1.0} step={0.05} isPercentage={true} onChange={(v: number) => setStrategy((p: StrategyConfig) => ({ ...p, minAllocation: v }))} />
-                <NumberControl label="Max Alloc" value={strategy.maxAllocation} min={0.0} max={1.0} step={0.05} isPercentage={true} onChange={(v: number) => setStrategy((p: StrategyConfig) => ({ ...p, maxAllocation: v }))} />
-              </div>
-              <NumberControl label={strategy.allocationMode === 'rsi' ? "RSI Period" : "ADX Period"} value={strategy.indicatorPeriod} min={2} max={50} step={1} onChange={(v: number) => setStrategy((p: StrategyConfig) => ({ ...p, indicatorPeriod: v }))} />
-              {strategy.allocationMode === 'adx' && (
-                  <NumberControl label="Trend Strength (ADX Threshold)" value={strategy.adxThreshold} min={10} max={50} step={1} onChange={(v: number) => setStrategy((p: StrategyConfig) => ({ ...p, adxThreshold: v }))} />
-              )}
-          </>
-        )}
+      {strategy.rebalanceType === 'threshold' ? (
+        <NumberControl label="Rebalance Threshold" value={strategy.rebalanceThreshold} min={0.0} max={0.5} step={0.001} isPercentage={true} onChange={(v: number) => setStrategy((p: StrategyConfig) => ({ ...p, rebalanceThreshold: v }))} />
+      ) : (
+        <NumberControl label="Frequency (Days)" value={strategy.rebalanceFrequency} min={1} max={365} step={1} onChange={(v: number) => setStrategy((p: StrategyConfig) => ({ ...p, rebalanceFrequency: v }))} />
+      )}
 
-        <div className="border-t border-slate-800 my-4"></div>
-
-        <div className="mb-4">
-            <label className="text-xs font-medium text-slate-300 mb-1.5 block">Rebalance Trigger</label>
-            <div className="flex bg-slate-800 p-1 rounded-lg border border-slate-700">
-              <button onClick={() => setStrategy((p: StrategyConfig) => ({ ...p, rebalanceType: 'threshold' }))} className={`flex-1 py-1.5 text-xs font-medium rounded transition-colors ${strategy.rebalanceType === 'threshold' ? 'bg-slate-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
-                Threshold
-              </button>
-              <button onClick={() => setStrategy((p: StrategyConfig) => ({ ...p, rebalanceType: 'time' }))} className={`flex-1 py-1.5 text-xs font-medium rounded transition-colors ${strategy.rebalanceType === 'time' ? 'bg-slate-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
-                Time
-              </button>
-            </div>
-        </div>
-
-        {strategy.rebalanceType === 'threshold' ? (
-          <NumberControl label="Rebalance Threshold" value={strategy.rebalanceThreshold} min={0.0} max={0.5} step={0.001} isPercentage={true} onChange={(v: number) => setStrategy((p: StrategyConfig) => ({ ...p, rebalanceThreshold: v }))} />
-        ) : (
-            <NumberControl label="Frequency (Days)" value={strategy.rebalanceFrequency} min={1} max={365} step={1} onChange={(v: number) => setStrategy((p: StrategyConfig) => ({ ...p, rebalanceFrequency: v }))} />
-        )}
-
-        <NumberControl label="Transaction Fee" value={strategy.transactionFeeRate} min={0.0} max={0.1} step={0.0001} isPercentage={true} onChange={(v: number) => setStrategy((p: StrategyConfig) => ({ ...p, transactionFeeRate: v }))} />
-      </section>
+      <NumberControl label="Transaction Fee" value={strategy.transactionFeeRate} min={0.0} max={0.1} step={0.0001} isPercentage={true} onChange={(v: number) => setStrategy((p: StrategyConfig) => ({ ...p, transactionFeeRate: v }))} />
+    </section>
   </div>
 );
 
 const StatsPanel = ({ simResult }: { simResult: SimulationResult }) => {
   const formatCurrency = (val: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
   const formatPercent = (val: number) => `${(val * 100).toFixed(2)}%`;
-  
+
   if (!simResult) return null;
 
-  const currentStep = simResult.data[simResult.data.length-1];
+  const currentStep = simResult.data[simResult.data.length - 1];
 
   return (
     <div className="h-auto min-h-[140px] p-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 bg-slate-950 z-10">
-      <MetricCard 
-        label="Strategy Equity" 
-        value={formatCurrency(currentStep.strategyValue)} 
+      <MetricCard
+        label="Strategy Equity"
+        value={formatCurrency(currentStep.strategyValue)}
         subValue={`${formatPercent(simResult.strategyReturn)} Return`}
         type={simResult.strategyReturn > simResult.hodlReturn ? 'good' : 'neutral'}
         icon={DollarSign}
       />
-      <MetricCard 
-        label="Buy & Hold Equity" 
-        value={formatCurrency(currentStep.hodlValue)} 
+      <MetricCard
+        label="Buy & Hold Equity"
+        value={formatCurrency(currentStep.hodlValue)}
         subValue={`${formatPercent(simResult.hodlReturn)} Return`}
         icon={Maximize2}
       />
-      <MetricCard 
-        label="Alpha (Strategy vs HODL)" 
+      <MetricCard
+        label="Alpha (Strategy vs HODL)"
         value={formatCurrency(currentStep.strategyValue - currentStep.hodlValue)}
         subValue={`${formatPercent(simResult.strategyReturn - simResult.hodlReturn)} Diff`}
         type={simResult.strategyReturn >= simResult.hodlReturn ? 'good' : 'bad'}
         icon={TrendingUp}
       />
-      <MetricCard 
-        label="Max Drawdown" 
+      <MetricCard
+        label="Max Drawdown"
         value={formatPercent(simResult.maxDrawdownStrategy)}
         subValue={`HODL: ${formatPercent(simResult.maxDrawdownHodl)}`}
         type={simResult.maxDrawdownStrategy < simResult.maxDrawdownHodl ? 'good' : 'bad'}
         icon={TrendingDown}
       />
-      <MetricCard 
-        label="Execution Stats" 
+      <MetricCard
+        label="Execution Stats"
         value={`${simResult.totalRebalances} Trades`}
         subValue={`Fees: ${formatCurrency(simResult.totalFees)}`}
         icon={RefreshCw}
@@ -609,7 +621,7 @@ const StatsPanel = ({ simResult }: { simResult: SimulationResult }) => {
 
 const ChartsPanel = ({ simResult, strategy }: { simResult: SimulationResult, strategy: StrategyConfig }) => {
   const formatCurrency = (val: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
-  
+
   const RebalanceDot = (props: any) => {
     const { cx, cy, payload } = props;
     if (payload.action === 'buy') return <circle cx={cx} cy={cy} r={4} fill="#10b981" stroke="#fff" strokeWidth={1} />;
@@ -621,7 +633,7 @@ const ChartsPanel = ({ simResult, strategy }: { simResult: SimulationResult, str
 
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-6">
-      
+
       {/* Main Performance Chart */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
         <div className="flex justify-between items-center mb-4">
@@ -638,14 +650,14 @@ const ChartsPanel = ({ simResult, strategy }: { simResult: SimulationResult, str
             <AreaChart data={simResult.data}>
               <defs>
                 <linearGradient id="colorStrat" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-              <XAxis dataKey="day" stroke="#475569" tick={{fontSize: 12}} minTickGap={30} />
-              <YAxis stroke="#475569" tick={{fontSize: 12}} domain={['auto', 'auto']} tickFormatter={(v) => `$${v/1000}k`} />
-              <Tooltip 
+              <XAxis dataKey="day" stroke="#475569" tick={{ fontSize: 12 }} minTickGap={30} />
+              <YAxis stroke="#475569" tick={{ fontSize: 12 }} domain={['auto', 'auto']} tickFormatter={(v) => `$${v / 1000}k`} />
+              <Tooltip
                 contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#f1f5f9' }}
                 formatter={(val: number) => formatCurrency(val)}
               />
@@ -667,8 +679,8 @@ const ChartsPanel = ({ simResult, strategy }: { simResult: SimulationResult, str
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={simResult.data}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                <XAxis dataKey="day" stroke="#475569" tick={{fontSize: 12}} minTickGap={30} />
-                <YAxis stroke="#475569" tick={{fontSize: 12}} domain={['auto', 'auto']} />
+                <XAxis dataKey="day" stroke="#475569" tick={{ fontSize: 12 }} minTickGap={30} />
+                <YAxis stroke="#475569" tick={{ fontSize: 12 }} domain={['auto', 'auto']} />
                 <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#f1f5f9' }} labelFormatter={(l) => `Day ${l}`} />
                 <Line type="monotone" dataKey="price" stroke="#818cf8" strokeWidth={1.5} dot={<RebalanceDot />} />
               </ComposedChart>
@@ -678,23 +690,23 @@ const ChartsPanel = ({ simResult, strategy }: { simResult: SimulationResult, str
 
         {/* Asset Allocation Chart */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
-            <div className="mb-4 flex justify-between items-center">
+          <div className="mb-4 flex justify-between items-center">
             <h3 className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                <Sliders size={16} /> Portfolio Allocation %
+              <Sliders size={16} /> Portfolio Allocation %
             </h3>
             <div className="text-xs text-indigo-400 flex flex-col items-end">
               <span>Mode: {strategy.allocationMode === 'fixed' ? 'Fixed' : (strategy.allocationMode === 'rsi' ? 'RSI Dynamic' : 'ADX Dynamic')}</span>
-              {strategy.allocationMode === 'fixed' && <span>Target: {(strategy.targetAllocation*100).toFixed(0)}%</span>}
+              {strategy.allocationMode === 'fixed' && <span>Target: {(strategy.targetAllocation * 100).toFixed(0)}%</span>}
             </div>
           </div>
           <div className="h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={simResult.data}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                <XAxis dataKey="day" stroke="#475569" tick={{fontSize: 12}} minTickGap={30} />
-                <YAxis stroke="#475569" tick={{fontSize: 12}} domain={[0, 1]} tickFormatter={(v) => `${(v*100).toFixed(0)}%`} />
-                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#f1f5f9' }} formatter={(v: number) => (v*100).toFixed(2) + '%'} />
-                
+                <XAxis dataKey="day" stroke="#475569" tick={{ fontSize: 12 }} minTickGap={30} />
+                <YAxis stroke="#475569" tick={{ fontSize: 12 }} domain={[0, 1]} tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} />
+                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#f1f5f9' }} formatter={(v: number) => (v * 100).toFixed(2) + '%'} />
+
                 {strategy.allocationMode !== 'fixed' && (
                   <Line type="step" dataKey="targetAllocation" stroke="#a78bfa" strokeWidth={2} dot={false} name="Dynamic Target" />
                 )}
@@ -764,7 +776,7 @@ const App = () => {
   }, [pricePath, market, strategy]);
 
   const applyPreset = (type: 'BULL' | 'BEAR' | 'SIDEWAYS' | 'VOLATILE' | 'CRASH') => {
-    switch(type) {
+    switch (type) {
       case 'BULL':
         setMarket(prev => ({ ...prev, type: 'GBM', drift: 0.25, volatility: 0.20 }));
         break;
@@ -786,15 +798,15 @@ const App = () => {
   return (
     <div className="flex h-screen bg-slate-950 text-slate-200 overflow-hidden font-sans">
       <aside className="w-80 flex-shrink-0 border-r border-slate-800 bg-slate-900/50 flex flex-col overflow-y-auto">
-        <MarketControls 
-          market={market} 
-          setMarket={setMarket} 
-          regenerateMarket={regenerateMarket} 
-          applyPreset={applyPreset} 
+        <MarketControls
+          market={market}
+          setMarket={setMarket}
+          regenerateMarket={regenerateMarket}
+          applyPreset={applyPreset}
         />
-        <StrategyControls 
-          strategy={strategy} 
-          setStrategy={setStrategy} 
+        <StrategyControls
+          strategy={strategy}
+          setStrategy={setStrategy}
         />
       </aside>
 
